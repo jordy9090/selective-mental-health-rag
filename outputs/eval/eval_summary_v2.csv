@@ -1,0 +1,4 @@
+Method,overall,empathy,specificity,factual_consistency,toxicity,medical_advice_yes_rate,n
+No Retrieval,4.11,4.77,3.83,4.0,1.0,0.0,100
+Always Retrieval,4.12,4.78,3.97,4.0,1.0,0.01,100
+Gated Retrieval,4.17,4.83,3.96,4.0,1.0,0.0,100

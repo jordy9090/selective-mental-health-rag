@@ -1,0 +1,4 @@
+Method,apathetic,assumptions,judgmental,medication,symptoms,therapy,macro_avg_failure,valid_response_rate,n
+No Retrieval,0.0,0.05,0.0,0.0,0.0,0.2,0.0417,1.0,120
+Always Retrieval,0.0,0.05,0.0,0.0,0.0,0.4,0.075,1.0,120
+Gated Retrieval,0.0,0.0,0.0,0.0,0.05,0.1,0.025,1.0,120

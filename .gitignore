@@ -1,0 +1,59 @@
+# secrets
+.env
+*.key
+*.pem
+*openai*
+*api_key*
+*token*
+*secret*
+
+# python/cache
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.cache/
+.mypy_cache/
+.pytest_cache/
+
+# virtual env / local env
+.venv/
+venv/
+env/
+conda-meta/
+
+# large model/checkpoint files
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.gguf
+outputs/gemma4-e4b-it-mh16k/
+outputs/gemma4-e4b-it-sanity/
+outputs/*adapter*/
+outputs/*checkpoint*/
+
+# raw/private/copyright-sensitive corpus files
+data/raw_docs/
+data/processed/chunks.jsonl
+data/processed/doc_index.jsonl
+
+# heavy generated outputs
+outputs/**/*.jsonl
+outputs/**/*.judged*
+outputs/base_eval/
+outputs/base_adv/
+
+# local clutter
+_trash/
+backups*/
+*.bak*
+*_backup.py
+
+# logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
