@@ -23,15 +23,14 @@ This project studies whether retrieval should be applied selectively in single-t
 - `scripts/aggregate_eval_scores.py`: aggregation for CounselBench-Eval results
 - `scripts/aggregate_adv_scores.py`: aggregation for CounselBench-Adv results
 - `scripts/plot_calibration.py`: threshold calibration plots
-
 ## Data
 
 The experiments use public benchmark datasets:
 
-- MentalChat16K for generator fine-tuning
-- CounselBench-Eval and CounselBench-Adv for evaluation
+- MentalChat16K for generator fine-tuning: https://huggingface.co/datasets/ShenLab/MentalChat16K
+- CounselBench-Eval and CounselBench-Adv for evaluation: https://github.com/llm-eval-mental-health/CounselBench
 
-Raw guideline documents, model checkpoints, API keys, and full generated response files are not redistributed in this repository due to size and licensing constraints.
+The guideline corpus is constructed from public mental-health resources following the procedure described in the paper and code. Raw guideline documents, model checkpoints, API keys, and full generated response files are not redistributed in this repository due to size, licensing, and safety considerations.
 
 ## Reproduction Sketch
 
