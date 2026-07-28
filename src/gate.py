@@ -231,23 +231,33 @@ def parse_gate_output(raw_text: str) -> Dict[str, Any]:
     }
 
 
-def decide_retrieval(r_safe: int, gate_scores: Dict[str, Any]) -> Dict[str, Any]:
+def decide_retrieval(
+    r_safe: int,
+    gate_scores: Dict[str, Any],
+    mean_threshold: float = 3.25,
+    route_threshold: float = 4.0,
+) -> Dict[str, Any]:
     """
     Decision rule:
     - if hard safety -> retrieve safety
-    - elif max(u_info, u_cope) >= 4 -> retrieve
-    - elif mean(u_info, u_cope, u_spec) >= 2.75 -> retrieve
+    - elif max(u_info, u_cope) >= route_threshold -> retrieve
+    - elif mean(u_info, u_cope, u_spec) >= mean_threshold -> retrieve
     - else no retrieval
 
     routing:
     - safety -> safety
-    - else use dominant_route, but u_spec alone should not force a specific family
+    - high-axis activation -> coping or psychoeducation by the larger score
+    - mean-only activation -> all_non_safety
     """
     if r_safe == 1:
         return {
             "retrieve": True,
             "route": "safety",
             "mean_need": None,
+            "high_axis_gate": False,
+            "mean_gate": False,
+            "mean_threshold": mean_threshold,
+            "route_threshold": route_threshold,
         }
 
     u_info = int(gate_scores["u_info"])
@@ -255,34 +265,35 @@ def decide_retrieval(r_safe: int, gate_scores: Dict[str, Any]) -> Dict[str, Any]
     u_spec = int(gate_scores["u_spec"])
     mean_need = (u_info + u_cope + u_spec) / 3.0
 
-    retrieve = False
-    if max(u_info, u_cope) >= 4:
-        retrieve = True
-    elif mean_need >= 2.75:
-        retrieve = True
+    high_axis = max(u_info, u_cope) >= route_threshold
+    mean_gate = mean_need >= mean_threshold
+    retrieve = high_axis or mean_gate
 
     if not retrieve:
         return {
             "retrieve": False,
             "route": "none",
             "mean_need": round(mean_need, 4),
+            "high_axis_gate": high_axis,
+            "mean_gate": mean_gate,
+            "mean_threshold": mean_threshold,
+            "route_threshold": route_threshold,
         }
 
-    # route 결정
-    route = gate_scores.get("dominant_route", "all_non_safety")
-    if route not in {"coping", "psychoeducation", "all_non_safety"}:
-        # fallback: score 기반
-        if u_cope >= u_info and u_cope >= 4:
-            route = "coping"
-        elif u_info > u_cope and u_info >= 4:
-            route = "psychoeducation"
-        else:
-            route = "all_non_safety"
+    route = (
+        ("coping" if u_cope >= u_info else "psychoeducation")
+        if high_axis
+        else "all_non_safety"
+    )
 
     return {
         "retrieve": True,
         "route": route,
         "mean_need": round(mean_need, 4),
+        "high_axis_gate": high_axis,
+        "mean_gate": mean_gate,
+        "mean_threshold": mean_threshold,
+        "route_threshold": route_threshold,
     }
 
 

@@ -1,10 +1,15 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from src.gate import decide_retrieval
 
 
 def load_jsonl(path: Path) -> pd.DataFrame:
@@ -40,39 +45,30 @@ def is_safety(row) -> bool:
 
 
 def simulated_route(row, tau: float, route_tau: float) -> str:
-    if is_safety(row):
-        return "safety"
-
-    mean_need = row.get("mean_need", 0)
     u_info = row.get("u_info", 0)
     u_cope = row.get("u_cope", 0)
     u_spec = row.get("u_spec", 0)
 
-    if pd.isna(mean_need):
+    if not is_safety(row) and any(pd.isna(score) for score in (u_info, u_cope, u_spec)):
         return "none"
 
-    if mean_need < tau:
-        return "none"
-
-    if u_info > u_cope and u_info >= route_tau:
-        return "psychoeducation"
-    elif u_cope > u_info and u_cope >= route_tau:
-        return "coping"
-    elif max(u_info, u_cope) >= route_tau:
-        return "all_non_safety"
-    elif u_spec >= route_tau:
-        return "all_non_safety"
-    else:
-        return "all_non_safety"
+    return decide_retrieval(
+        r_safe=int(is_safety(row)),
+        gate_scores={"u_info": u_info, "u_cope": u_cope, "u_spec": u_spec},
+        mean_threshold=tau,
+        route_threshold=route_tau,
+    )["route"]
 
 
 def add_simulation_columns(df: pd.DataFrame, tau: float, route_tau: float) -> pd.DataFrame:
     df = df.copy()
     df["sim_route"] = df.apply(lambda row: simulated_route(row, tau, route_tau), axis=1)
     df["sim_retrieve"] = df["sim_route"] != "none"
-    df["soft_retrieve"] = df["mean_need"] >= tau
     df["hard_safety"] = df.apply(is_safety, axis=1)
     df["max_info_cope"] = df[["u_info", "u_cope"]].max(axis=1)
+    df["soft_retrieve"] = (
+        (df["max_info_cope"] >= route_tau) | (df["mean_need"] >= tau)
+    )
     return df
 
 
@@ -118,22 +114,28 @@ def plot_need_score_bars(df: pd.DataFrame, name: str, out_dir: Path):
     plt.close()
 
 
-def plot_activation_curve(df: pd.DataFrame, name: str, out_dir: Path):
+def plot_activation_curve(
+    df: pd.DataFrame, name: str, out_dir: Path, route_tau: float
+):
     max_score = max(5.0, float(df["mean_need"].max()))
     thresholds = np.round(np.arange(0, max_score + 0.25, 0.25), 2)
 
     rows = []
+    safety = df.apply(is_safety, axis=1)
+    high_axis = df[["u_info", "u_cope"]].max(axis=1) >= route_tau
     for tau in thresholds:
-        soft_rate = float((df["mean_need"] >= tau).mean())
-        total_rate = float(((df["mean_need"] >= tau) | df.apply(is_safety, axis=1)).mean())
+        mean_gate = df["mean_need"] >= tau
+        soft_retrieve = high_axis | mean_gate
+        total_retrieve = safety | soft_retrieve
         rows.append(
             {
                 "dataset": name,
                 "tau": tau,
-                "soft_activation_rate": soft_rate,
-                "total_activation_rate_with_safety": total_rate,
-                "soft_count": int((df["mean_need"] >= tau).sum()),
-                "total_count_with_safety": int(((df["mean_need"] >= tau) | df.apply(is_safety, axis=1)).sum()),
+                "route_tau": route_tau,
+                "soft_activation_rate": float(soft_retrieve.mean()),
+                "total_activation_rate_with_safety": float(total_retrieve.mean()),
+                "soft_count": int(soft_retrieve.sum()),
+                "total_count_with_safety": int(total_retrieve.sum()),
                 "n": len(df),
             }
         )
@@ -147,7 +149,7 @@ def plot_activation_curve(df: pd.DataFrame, name: str, out_dir: Path):
     plt.ylim(0, 1.05)
     plt.xlabel("Threshold tau")
     plt.ylabel("Retrieval activation rate")
-    plt.title(f"{name}: Activation rate by threshold")
+    plt.title(f"{name}: Activation rate by threshold (route_tau={route_tau})")
     plt.legend()
     plt.tight_layout()
     plt.savefig(out_dir / f"{name}_activation_by_threshold.png", dpi=300)
@@ -202,7 +204,7 @@ def process_one(path: Path, name: str, out_dir: Path, tau: float, route_tau: flo
 
     plot_mean_need_hist(df, name, out_dir, tau)
     plot_need_score_bars(df, name, out_dir)
-    sweep_df = plot_activation_curve(df, name, out_dir)
+    sweep_df = plot_activation_curve(df, name, out_dir, route_tau)
     sim_df = plot_route_counts(df, name, out_dir, tau, route_tau)
 
     sim_df.to_csv(out_dir / f"{name}_calibration_rows.csv", index=False)

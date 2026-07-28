@@ -220,7 +220,10 @@ def run_always_retrieval(model, tok, retriever, question, top_k, max_new):
     return response, ev
 
 
-def run_gated_retrieval(model, tok, retriever, question, top_k, max_new, gate_max_new):
+def run_gated_retrieval(
+    model, tok, retriever, question, top_k, max_new, gate_max_new,
+    mean_threshold=3.25, route_threshold=4.0,
+):
     """
     Gated retrieval flow:
     1. query-only hard safety trigger
@@ -249,7 +252,12 @@ def run_gated_retrieval(model, tok, retriever, question, top_k, max_new, gate_ma
 
     # 2) safety override
     if r_safe == 1:
-        decision = decide_retrieval(r_safe=1, gate_scores={})
+        decision = decide_retrieval(
+            r_safe=1,
+            gate_scores={},
+            mean_threshold=mean_threshold,
+            route_threshold=route_threshold,
+        )
         route = decision["route"]
         allowed = allowed_families_for_route(route)
 
@@ -282,6 +290,10 @@ def run_gated_retrieval(model, tok, retriever, question, top_k, max_new, gate_ma
             "u_cope": None,
             "u_spec": None,
             "mean_need": None,
+            "mean_threshold": decision["mean_threshold"],
+            "route_threshold": decision["route_threshold"],
+            "high_axis_gate": decision["high_axis_gate"],
+            "mean_gate": decision["mean_gate"],
             "retrieve": True,
             "route": route,
             "allowed_families": allowed,
@@ -315,7 +327,12 @@ def run_gated_retrieval(model, tok, retriever, question, top_k, max_new, gate_ma
     gate_scores = parse_gate_output(gate_raw)
 
     # 5) decision
-    decision = decide_retrieval(r_safe=0, gate_scores=gate_scores)
+    decision = decide_retrieval(
+        r_safe=0,
+        gate_scores=gate_scores,
+        mean_threshold=mean_threshold,
+        route_threshold=route_threshold,
+    )
     retrieve = bool(decision["retrieve"])
     route = decision["route"]
     allowed = allowed_families_for_route(route)
@@ -354,6 +371,10 @@ def run_gated_retrieval(model, tok, retriever, question, top_k, max_new, gate_ma
         "u_cope": gate_scores.get("u_cope"),
         "u_spec": gate_scores.get("u_spec"),
         "mean_need": decision.get("mean_need"),
+        "mean_threshold": decision["mean_threshold"],
+        "route_threshold": decision["route_threshold"],
+        "high_axis_gate": decision["high_axis_gate"],
+        "mean_gate": decision["mean_gate"],
         "retrieve": retrieve,
         "route": route,
         "allowed_families": allowed,
@@ -379,6 +400,8 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--max_new", type=int, default=400)
     ap.add_argument("--gate_max_new", type=int, default=180)
+    ap.add_argument("--mean_threshold", type=float, default=3.25)
+    ap.add_argument("--route_threshold", type=float, default=4.0)
     args = ap.parse_args()
 
     os.makedirs(Path(args.out).parent, exist_ok=True)
@@ -467,6 +490,8 @@ def main():
                     top_k=args.top_k,
                     max_new=args.max_new,
                     gate_max_new=args.gate_max_new,
+                    mean_threshold=args.mean_threshold,
+                    route_threshold=args.route_threshold,
                 )
                 response = result["response"]
                 ev = result["evidence"]
@@ -479,6 +504,10 @@ def main():
                     "u_cope": result["u_cope"],
                     "u_spec": result["u_spec"],
                     "mean_need": result["mean_need"],
+                    "mean_threshold": result["mean_threshold"],
+                    "route_threshold": result["route_threshold"],
+                    "high_axis_gate": result["high_axis_gate"],
+                    "mean_gate": result["mean_gate"],
                     "retrieve": result["retrieve"],
                     "route": result["route"],
                     "allowed_families": result["allowed_families"],

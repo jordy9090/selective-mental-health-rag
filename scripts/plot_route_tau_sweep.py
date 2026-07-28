@@ -1,10 +1,15 @@
 import json
 import re
+import sys
 from pathlib import Path
 from collections import Counter
 
 import pandas as pd
 import matplotlib.pyplot as plt
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from src.gate import decide_retrieval
 
 
 EVAL_PATH = Path("outputs/eval/gated_retrieval.jsonl")
@@ -113,20 +118,20 @@ def build_sweep(rows, dataset_name):
             mean_need = (u_info + u_cope + u_spec) / 3.0
 
         for route_tau in ROUTE_TAUS:
-            high_axis_gate = route_score is not None and route_score >= route_tau
-            mean_gate = mean_need is not None and mean_need >= MEAN_TAU
-            retrieve = hard_safety or high_axis_gate or mean_gate
-
-            if hard_safety:
-                sim_route = "safety"
-            elif not retrieve:
-                sim_route = "none"
-            elif high_axis_gate:
-                sim_route = choose_route(u_info, u_cope)
-            elif mean_gate:
-                sim_route = "all_non_safety"
+            if hard_safety or mean_need is not None:
+                decision = decide_retrieval(
+                    r_safe=int(hard_safety),
+                    gate_scores={"u_info": u_info, "u_cope": u_cope, "u_spec": u_spec},
+                    mean_threshold=MEAN_TAU,
+                    route_threshold=route_tau,
+                )
             else:
-                sim_route = "none"
+                decision = {
+                    "retrieve": False,
+                    "route": "none",
+                    "high_axis_gate": False,
+                    "mean_gate": False,
+                }
 
             records.append({
                 "dataset": dataset_name,
@@ -138,10 +143,10 @@ def build_sweep(rows, dataset_name):
                 "mean_need": mean_need,
                 "route_score": route_score,
                 "hard_safety": int(hard_safety),
-                "high_axis_gate": int(high_axis_gate),
-                "mean_gate": int(mean_gate),
-                "retrieve": int(retrieve),
-                "sim_route": sim_route,
+                "high_axis_gate": int(decision["high_axis_gate"]),
+                "mean_gate": int(decision["mean_gate"]),
+                "retrieve": int(decision["retrieve"]),
+                "sim_route": decision["route"],
             })
 
     print(f"[INFO] {dataset_name}: rows={len(rows)}, missing soft route scores={missing_soft}")

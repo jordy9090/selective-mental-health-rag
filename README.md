@@ -1,5 +1,20 @@
 # Selective Retrieval for Single-Turn Mental-Health QA
 
+## Selective Gate Configuration
+
+The selective gate first applies a fixed, regex-based hard-safety detector to
+the user query. For non-safety queries, the same MentalChat16K-tuned Gemma
+model used for response generation greedily scores the user query together
+with its closed-book draft (`do_sample=False`). It produces integer
+information, coping, and specificity need scores on a 1–5 scale.
+
+Hard safety always retrieves from the safety corpus. Otherwise, retrieval is
+activated when either the mean of the three scores is at least `3.25` or the
+larger of the information and coping scores is at least `4.0`. A high-axis
+activation routes to `coping` when the coping score is greater than or equal
+to the information score, and to `psychoeducation` otherwise. Activation by
+the mean threshold alone routes to `all_non_safety`.
+
 This repository contains the implementation for the KDD Undergraduate Consortium submission:
 
 **When Retrieval Helps: Selective Retrieval for Single-Turn Mental-Health QA**
