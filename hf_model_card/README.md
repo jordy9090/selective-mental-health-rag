@@ -83,11 +83,24 @@ No MentalChat16K examples are redistributed in this model repository.
 ## Training Procedure
 
 - Base model: `google/gemma-4-E4B-it`
-- Adaptation method: QLoRA / PEFT LoRA
-- Task: single-turn mental-health response generation
 - Training dataset: `ShenLab/MentalChat16K`
+- Adaptation method: QLoRA with PEFT LoRA
+- Quantization: 4-bit NF4 with double quantization
+- LoRA rank: 64
+- LoRA alpha: 16
+- LoRA dropout: 0.1
+- Target modules: all linear layers
+- Epochs: 3
+- Learning rate: `5e-5`
+- Maximum sequence length: 1024
+- Per-device batch size: 1
+- Gradient accumulation steps: 8
+- Optimizer: fused AdamW
+- Learning-rate schedule: constant
+- Maximum gradient norm: 0.3
+- Checkpoint and evaluation interval: 100 steps
 
-The released `adapter_config.json` records the adapter architecture. The accompanying code repository documents the inference and selective-retrieval pipeline.
+The released `adapter_config.json` records the adapter architecture. The accompanying code repository documents the training, inference, and selective-retrieval pipeline.
 
 ## Evaluation Context
 
